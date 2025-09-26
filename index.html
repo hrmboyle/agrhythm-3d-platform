@@ -996,9 +996,13 @@
                     nodeGroup.style.transform = `translate(${node.x}px, ${node.y}px) scale(1)`;
                 });
                 
-                nodeGroup.addEventListener('click', () => {
-                    updateNodeInfo(node);
+                nodeGroup.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handle2DNodeClick(node, e);
                 });
+                
+                // Store node reference for easy access
+                nodeGroup.userData = node;
             });
         }
         
@@ -1073,12 +1077,216 @@
                 updateTransform();
             });
             
+            // Add double-click for node creation in edit mode
+            svg.addEventListener('dblclick', (e) => {
+                if (isEditMode && (e.target === svg || e.target.id === 'main-group')) {
+                    create2DNode(e.clientX, e.clientY);
+                }
+            });
+            
+            // Add right-click to cancel connection mode
+            svg.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (is2DConnectionMode) {
+                    cancel2DConnection();
+                }
+            });
+            
             function updateTransform() {
                 const mainGroup = svg.querySelector('#main-group');
                 if (mainGroup) {
                     mainGroup.setAttribute('transform', `translate(${json2dPanX}, ${json2dPanY}) scale(${json2dScale})`);
                 }
             }
+        }
+        
+        // 2D Edit Mode Functions
+        let is2DConnectionMode = false;
+        let connection2DSource = null;
+        let connection2DPreview = null;
+        
+        function handle2DNodeClick(node, event) {
+            if (!isEditMode) {
+                // View mode - just show node info
+                updateNodeInfo(node);
+                return;
+            }
+            
+            // Edit mode handling
+            if (event.shiftKey && !is2DConnectionMode) {
+                // Start connection creation
+                start2DConnection(node);
+            } else if (is2DConnectionMode && connection2DSource) {
+                // Complete connection
+                complete2DConnection(node);
+            } else {
+                // Open node editor
+                open2DNodeEditor(node);
+            }
+        }
+        
+        function open2DNodeEditor(node) {
+            // Create a fake node object that works with the existing modal
+            const nodeObj = {
+                userData: {
+                    id: node.id,
+                    label: node.label,
+                    type: node.type,
+                    group: node.group,
+                    notes: node.notes || '',
+                    description: node.description || ''
+                }
+            };
+            
+            // Store reference to 2D node for updates
+            nodeObj.is2DNode = true;
+            nodeObj.node2D = node;
+            
+            openNodeEditor(nodeObj, false);
+        }
+        
+        function start2DConnection(sourceNode) {
+            is2DConnectionMode = true;
+            connection2DSource = sourceNode;
+            
+            // Change cursor to indicate connection mode
+            const svg = document.getElementById('json2d-canvas');
+            svg.style.cursor = 'crosshair';
+            
+            // Add visual feedback to source node
+            const sourceElement = findNodeElement(sourceNode.id);
+            if (sourceElement) {
+                const rect = sourceElement.querySelector('.json2d-node-rect');
+                rect.setAttribute('stroke', '#ffff00');
+                rect.setAttribute('stroke-width', '4');
+            }
+        }
+        
+        function complete2DConnection(targetNode) {
+            if (!is2DConnectionMode || !connection2DSource || connection2DSource.id === targetNode.id) {
+                cancel2DConnection();
+                return;
+            }
+            
+            // Check if connection already exists
+            const existingConnection = siteData.links.find(link => 
+                (link.source === connection2DSource.id && link.target === targetNode.id) ||
+                (link.source === targetNode.id && link.target === connection2DSource.id)
+            );
+            
+            if (existingConnection) {
+                alert('Connection already exists between these nodes.');
+                cancel2DConnection();
+                return;
+            }
+            
+            // Add new connection to siteData
+            siteData.links.push({
+                source: connection2DSource.id,
+                target: targetNode.id
+            });
+            
+            // Refresh the 2D visualization
+            initJSON2DVisualization();
+            
+            cancel2DConnection();
+        }
+        
+        function cancel2DConnection() {
+            if (connection2DSource) {
+                // Reset source node visual feedback
+                const sourceElement = findNodeElement(connection2DSource.id);
+                if (sourceElement) {
+                    const rect = sourceElement.querySelector('.json2d-node-rect');
+                    rect.setAttribute('stroke', '#64f4ff');
+                    rect.setAttribute('stroke-width', '2');
+                }
+            }
+            
+            is2DConnectionMode = false;
+            connection2DSource = null;
+            
+            // Reset cursor
+            const svg = document.getElementById('json2d-canvas');
+            svg.style.cursor = 'grab';
+        }
+        
+        function findNodeElement(nodeId) {
+            const nodeGroups = document.querySelectorAll('.json2d-node-group');
+            for (const group of nodeGroups) {
+                if (group.userData && group.userData.id === nodeId) {
+                    return group;
+                }
+            }
+            return null;
+        }
+        
+        function create2DNode(x, y) {
+            if (!isEditMode) return;
+            
+            // Convert screen coordinates to SVG coordinates
+            const svg = document.getElementById('json2d-canvas');
+            const rect = svg.getBoundingClientRect();
+            const mainGroup = svg.querySelector('#main-group');
+            
+            // Account for current pan and zoom
+            const svgX = (x - rect.left - json2dPanX) / json2dScale;
+            const svgY = (y - rect.top - json2dPanY) / json2dScale;
+            
+            // Create new node data
+            const nodeId = 'node-2d-' + nextNodeId++;
+            const newNode = {
+                id: nodeId,
+                label: 'New Node',
+                type: 'component',
+                group: 'core',
+                notes: '',
+                description: '',
+                x: svgX,
+                y: svgY
+            };
+            
+            // Add to siteData
+            siteData.nodes.push(newNode);
+            
+            // Create fake node object for editor
+            const nodeObj = {
+                userData: newNode,
+                is2DNode: true,
+                node2D: newNode
+            };
+            
+            // Open editor for new node
+            openNodeEditor(nodeObj, true);
+        }
+        
+        function update2DNodeFromEditor(node2D, updatedData) {
+            // Update the 2D node data
+            node2D.label = updatedData.label;
+            node2D.type = updatedData.type;
+            node2D.group = updatedData.group;
+            node2D.notes = updatedData.notes || '';
+            node2D.description = updatedData.description || '';
+            
+            // Update in siteData
+            const nodeIndex = siteData.nodes.findIndex(n => n.id === node2D.id);
+            if (nodeIndex !== -1) {
+                siteData.nodes[nodeIndex] = { ...siteData.nodes[nodeIndex], ...updatedData };
+            }
+            
+            // Refresh 2D visualization
+            initJSON2DVisualization();
+        }
+        
+        function delete2DNode(nodeId) {
+            // Remove from siteData.nodes
+            siteData.nodes = siteData.nodes.filter(n => n.id !== nodeId);
+            
+            // Remove all links connected to this node
+            siteData.links = siteData.links.filter(l => l.source !== nodeId && l.target !== nodeId);
+            
+            // Refresh 2D visualization
+            initJSON2DVisualization();
         }
         
         // Edit Mode Functions
@@ -1179,17 +1387,10 @@
             currentEditingNode.userData.notes = notes;
             currentEditingNode.userData.description = description;
             
-            // Update the material color based on type
-            const newColor = nodeColors[type] || 0xffffff;
-            currentEditingNode.material.color.setHex(newColor);
-            currentEditingNode.material.emissive.setHex(newColor);
-            
-            // Update the label sprite
-            updateNodeLabel(currentEditingNode);
-            
-            // Add to siteData if it's a new node
-            if (isNewNode) {
-                siteData.nodes.push({
+            // Handle 2D nodes differently from 3D nodes
+            if (currentEditingNode.is2DNode) {
+                // Update 2D node
+                update2DNodeFromEditor(currentEditingNode.node2D, {
                     id: currentEditingNode.userData.id,
                     label: label,
                     type: type,
@@ -1198,17 +1399,37 @@
                     description: description
                 });
             } else {
-                // Update existing node in siteData
-                const nodeIndex = siteData.nodes.findIndex(n => n.id === currentEditingNode.userData.id);
-                if (nodeIndex !== -1) {
-                    siteData.nodes[nodeIndex] = {
-                        ...siteData.nodes[nodeIndex],
+                // Update 3D node
+                const newColor = nodeColors[type] || 0xffffff;
+                currentEditingNode.material.color.setHex(newColor);
+                currentEditingNode.material.emissive.setHex(newColor);
+                
+                // Update the label sprite
+                updateNodeLabel(currentEditingNode);
+                
+                // Add to siteData if it's a new node
+                if (isNewNode) {
+                    siteData.nodes.push({
+                        id: currentEditingNode.userData.id,
                         label: label,
                         type: type,
                         group: group,
                         notes: notes,
                         description: description
-                    };
+                    });
+                } else {
+                    // Update existing node in siteData
+                    const nodeIndex = siteData.nodes.findIndex(n => n.id === currentEditingNode.userData.id);
+                    if (nodeIndex !== -1) {
+                        siteData.nodes[nodeIndex] = {
+                            ...siteData.nodes[nodeIndex],
+                            label: label,
+                            type: type,
+                            group: group,
+                            notes: notes,
+                            description: description
+                        };
+                    }
                 }
             }
             
@@ -1251,31 +1472,37 @@
             
             const nodeId = currentEditingNode.userData.id;
             
-            // Remove from siteData.nodes
-            siteData.nodes = siteData.nodes.filter(n => n.id !== nodeId);
-            
-            // Remove all links connected to this node
-            siteData.links = siteData.links.filter(l => l.source !== nodeId && l.target !== nodeId);
-            
-            // Remove from scene
-            scene.remove(currentEditingNode);
-            
-            // Remove from nodes array
-            const nodeIndex = nodes.indexOf(currentEditingNode);
-            if (nodeIndex > -1) {
-                nodes.splice(nodeIndex, 1);
-            }
-            
-            // Remove associated links from scene
-            links.forEach((link, index) => {
-                if (link.userData.source === currentEditingNode || link.userData.target === currentEditingNode) {
-                    scene.remove(link);
-                    links.splice(index, 1);
+            if (currentEditingNode.is2DNode) {
+                // Handle 2D node deletion
+                delete2DNode(nodeId);
+            } else {
+                // Handle 3D node deletion
+                // Remove from siteData.nodes
+                siteData.nodes = siteData.nodes.filter(n => n.id !== nodeId);
+                
+                // Remove all links connected to this node
+                siteData.links = siteData.links.filter(l => l.source !== nodeId && l.target !== nodeId);
+                
+                // Remove from scene
+                scene.remove(currentEditingNode);
+                
+                // Remove from nodes array
+                const nodeIndex = nodes.indexOf(currentEditingNode);
+                if (nodeIndex > -1) {
+                    nodes.splice(nodeIndex, 1);
                 }
-            });
-            
-            // Recreate links to update the visualization
-            recreateLinks();
+                
+                // Remove associated links from scene
+                links.forEach((link, index) => {
+                    if (link.userData.source === currentEditingNode || link.userData.target === currentEditingNode) {
+                        scene.remove(link);
+                        links.splice(index, 1);
+                    }
+                });
+                
+                // Recreate links to update the visualization
+                recreateLinks();
+            }
             
             closeNodeEditor();
         }
@@ -1284,15 +1511,25 @@
         function showAddNodeDialog() {
             if (!isEditMode) return;
             
-            // Create a new node at the center of the current view
-            const centerPosition = new THREE.Vector3(0, 0, 0);
-            
-            // Add some randomness to avoid overlapping with existing nodes
-            centerPosition.x += (Math.random() - 0.5) * 10;
-            centerPosition.y += (Math.random() - 0.5) * 10;
-            centerPosition.z += (Math.random() - 0.5) * 10;
-            
-            createNewNode(centerPosition);
+            // Check if we're in 2D or 3D view
+            if (currentLayout === 'json2d') {
+                // Create 2D node at center of view
+                const svg = document.getElementById('json2d-canvas');
+                const rect = svg.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                create2DNode(centerX, centerY);
+            } else {
+                // Create 3D node at center of view
+                const centerPosition = new THREE.Vector3(0, 0, 0);
+                
+                // Add some randomness to avoid overlapping with existing nodes
+                centerPosition.x += (Math.random() - 0.5) * 10;
+                centerPosition.y += (Math.random() - 0.5) * 10;
+                centerPosition.z += (Math.random() - 0.5) * 10;
+                
+                createNewNode(centerPosition);
+            }
         }
         
         function createNewNode(position) {
