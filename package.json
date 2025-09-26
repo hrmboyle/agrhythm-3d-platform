@@ -1,0 +1,42 @@
+{
+  "name": "agrhythm-3d-platform",
+  "version": "1.0.0",
+  "description": "Interactive 3D visualization of the AgRhythm Platform architecture using Three.js",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "threejs",
+    "3d-visualization",
+    "agrhythm",
+    "platform-architecture",
+    "interactive",
+    "data-visualization",
+    "webgl",
+    "farm-management",
+    "agriculture"
+  ],
+  "author": "AgRhythm Team",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/agrhythm-3d-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/agrhythm-3d-platform/issues"
+  },
+  "homepage": "https://github.com/yourusername/agrhythm-3d-platform#readme",
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

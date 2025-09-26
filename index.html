@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgRhythm Platform - 3D Structure Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #info h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #64f4ff;
+        }
+        
+        #info p {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #64f4ff;
+        }
+        
+        .controls p {
+            font-size: 12px;
+            margin: 5px 0;
+        }
+        
+        #node-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 200px;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 244, 255, 0.3);
+        }
+        
+        #node-info h3 {
+            color: #64f4ff;
+            margin-bottom: 10px;
+        }
+        
+        #node-info p {
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #64f4ff;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        #visualization-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .viz-button {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid rgba(100, 244, 255, 0.5);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .viz-button:hover {
+            background: rgba(100, 244, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .viz-button.active {
+            background: rgba(100, 244, 255, 0.3);
+            border-color: #64f4ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info">
+        <h1>AgRhythm Platform</h1>
+        <p>Interactive 3D visualization of website structure</p>
+        <p>Nodes represent different pages and components. Lines show connections and data flow.</p>
+        
+        <div class="controls">
+            <h3>Controls:</h3>
+            <p>🖱️ <strong>Left Click + Drag:</strong> Rotate</p>
+            <p>🖱️ <strong>Right Click + Drag:</strong> Pan</p>
+            <p>🖱️ <strong>Scroll:</strong> Zoom</p>
+            <p>🖱️ <strong>Hover:</strong> Highlight connections</p>
+            <p>🖱️ <strong>Click Node:</strong> Show details</p>
+        </div>
+    </div>
+    
+    <div id="visualization-toggle">
+        <button class="viz-button active" onclick="switchVisualization('force')">Force Graph</button>
+        <button class="viz-button" onclick="switchVisualization('hierarchical')">Hierarchical</button>
+        <button class="viz-button" onclick="switchVisualization('circular')">Circular</button>
+    </div>
+    
+    <div class="legend">
+        <h3>Node Types</h3>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff6b6b;"></div>
+            <span>Entry/Login Pages</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4ecdc4;"></div>
+            <span>Core Platform</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #45b7d1;"></div>
+            <span>Dashboard Sections</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f7dc6f;"></div>
+            <span>Operators/Specialists</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #bb8fce;"></div>
+            <span>External Systems</span>
+        </div>
+    </div>
+    
+    <div id="node-info">
+        <h3 id="node-title">Node Information</h3>
+        <p id="node-type"></p>
+        <p id="node-connections"></p>
+        <p id="node-details"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Website structure data
+        const siteData = {
+            nodes: [
+                // Entry points
+                { id: 'profile-edit', label: 'Profile/Edit', type: 'entry', group: 'entry' },
+                { id: 'billing', label: 'Billing', type: 'entry', group: 'entry' },
+                
+                // Core
+                { id: 'agrhythm', label: 'AgRhythm Hub', type: 'hub', group: 'core' },
+                { id: 'dashboard', label: 'Dashboard', type: 'component', group: 'core' },
+                { id: 'ai-chat', label: 'AI Chat', type: 'component', group: 'core' },
+                { id: 'insights', label: 'Insights', type: 'component', group: 'core' },
+                { id: 'collected-data', label: 'Collected Data', type: 'data', group: 'core' },
+                
+                // Dashboard sections
+                { id: 'reports', label: 'Reports', type: 'section', group: 'dashboard' },
+                { id: 'audits', label: 'Audits', type: 'section', group: 'dashboard' },
+                { id: 'maps', label: 'Maps', type: 'section', group: 'dashboard' },
+                { id: 'crops', label: 'Crops', type: 'section', group: 'dashboard' },
+                { id: 'infrastructure', label: 'Infrastructure', type: 'section', group: 'dashboard' },
+                { id: 'health-safety', label: 'Health & Safety', type: 'section', group: 'dashboard' },
+                { id: 'stock', label: 'Stock', type: 'section', group: 'dashboard' },
+                { id: 'tasks', label: 'Tasks/Todo', type: 'section', group: 'dashboard' },
+                { id: 'finances', label: 'Finances', type: 'section', group: 'dashboard' },
+                
+                // Operators
+                { id: 'operator-login', label: 'Operator Login', type: 'login', group: 'operators' },
+                { id: 'drone-operators', label: 'Drone Operators', type: 'section', group: 'operators' },
+                { id: 'other-specialists', label: 'Other Specialists', type: 'section', group: 'operators' },
+                
+                // Farmer
+                { id: 'farmer-login', label: 'Farmer Login', type: 'login', group: 'farmer' },
+                { id: 'referrals', label: 'Referrals', type: 'section', group: 'farmer' },
+                { id: 'companies', label: 'Companies', type: 'component', group: 'farmer' },
+                { id: 'products', label: 'Products', type: 'component', group: 'farmer' },
+                
+                // External
+                { id: 'api-access', label: 'API Access', type: 'integration', group: 'external' },
+                { id: 'cameras', label: 'Cameras', type: 'external', group: 'external' },
+                { id: 'gallagher', label: 'Gallagher', type: 'external', group: 'external' },
+                { id: 'iot', label: 'IOT Devices', type: 'external', group: 'external' },
+                { id: 'necklaces', label: 'Necklaces', type: 'external', group: 'external' }
+            ],
+            links: [
+                // Entry connections
+                { source: 'profile-edit', target: 'billing' },
+                { source: 'billing', target: 'agrhythm' },
+                { source: 'profile-edit', target: 'agrhythm' },
+                
+                // Core connections
+                { source: 'agrhythm', target: 'dashboard' },
+                { source: 'dashboard', target: 'reports' },
+                { source: 'dashboard', target: 'audits' },
+                { source: 'dashboard', target: 'maps' },
+                { source: 'dashboard', target: 'crops' },
+                { source: 'dashboard', target: 'infrastructure' },
+                { source: 'dashboard', target: 'health-safety' },
+                { source: 'dashboard', target: 'stock' },
+                { source: 'dashboard', target: 'tasks' },
+                { source: 'dashboard', target: 'finances' },
+                
+                // AI and Data flow
+                { source: 'collected-data', target: 'ai-chat' },
+                { source: 'agrhythm', target: 'ai-chat' },
+                { source: 'agrhythm', target: 'insights' },
+                { source: 'insights', target: 'farmer-login' },
+                
+                // Operator flow
+                { source: 'agrhythm', target: 'operator-login' },
+                { source: 'operator-login', target: 'drone-operators' },
+                { source: 'operator-login', target: 'other-specialists' },
+                { source: 'reports', target: 'drone-operators' },
+                
+                // Farmer flow
+                { source: 'farmer-login', target: 'referrals' },
+                { source: 'referrals', target: 'companies' },
+                { source: 'referrals', target: 'products' },
+                
+                // API connections
+                { source: 'agrhythm', target: 'api-access' },
+                { source: 'api-access', target: 'cameras' },
+                { source: 'api-access', target: 'gallagher' },
+                { source: 'api-access', target: 'iot' },
+                { source: 'api-access', target: 'necklaces' },
+                { source: 'api-access', target: 'collected-data' }
+            ]
+        };
+
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let nodes = [], links = [];
+        let raycaster, mouse;
+        let selectedNode = null;
+        let hoveredNode = null;
+        let currentLayout = 'force';
+        
+        // Node color mapping
+        const nodeColors = {
+            entry: 0xff6b6b,
+            hub: 0x4ecdc4,
+            component: 0x4ecdc4,
+            data: 0x4ecdc4,
+            section: 0x45b7d1,
+            login: 0xff6b6b,
+            integration: 0xbb8fce,
+            external: 0xbb8fce
+        };
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x000000, 100, 300);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 100);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 0.8);
+            pointLight.position.set(50, 50, 50);
+            scene.add(pointLight);
+            
+            const pointLight2 = new THREE.PointLight(0x64f4ff, 0.4);
+            pointLight2.position.set(-50, -50, -50);
+            scene.add(pointLight2);
+            
+            // Raycaster for mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Create visualization
+            createNodes();
+            createLinks();
+            applyForceLayout();
+            
+            // Add mouse controls
+            setupControls();
+            
+            // Start animation
+            animate();
+        }
+        
+        function createNodes() {
+            const nodeGeometry = new THREE.SphereGeometry(2, 32, 32);
+            
+            siteData.nodes.forEach((nodeData, index) => {
+                const material = new THREE.MeshPhongMaterial({
+                    color: nodeColors[nodeData.type] || 0xffffff,
+                    emissive: nodeColors[nodeData.type] || 0xffffff,
+                    emissiveIntensity: 0.2,
+                    shininess: 100
+                });
+                
+                const nodeMesh = new THREE.Mesh(nodeGeometry, material);
+                nodeMesh.userData = nodeData;
+                
+                // Create label
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                context.fillStyle = 'white';
+                context.font = '24px Arial';
+                context.textAlign = 'center';
+                context.fillText(nodeData.label, 128, 40);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(10, 2.5, 1);
+                sprite.position.y = -4;
+                nodeMesh.add(sprite);
+                
+                scene.add(nodeMesh);
+                nodes.push(nodeMesh);
+            });
+        }
+        
+        function createLinks() {
+            const linkMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x64f4ff, 
+                transparent: true, 
+                opacity: 0.3,
+                linewidth: 2
+            });
+            
+            siteData.links.forEach(linkData => {
+                const sourceNode = nodes.find(n => n.userData.id === linkData.source);
+                const targetNode = nodes.find(n => n.userData.id === linkData.target);
+                
+                if (sourceNode && targetNode) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = new Float32Array(6);
+                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    
+                    const line = new THREE.Line(geometry, linkMaterial.clone());
+                    line.userData = { source: sourceNode, target: targetNode };
+                    
+                    scene.add(line);
+                    links.push(line);
+                }
+            });
+        }
+        
+        function applyForceLayout() {
+            // Simple force-directed layout
+            const iterations = 100;
+            const k = 30; // Spring constant
+            const c = 0.1; // Damping
+            
+            // Initialize random positions
+            nodes.forEach(node => {
+                node.position.x = (Math.random() - 0.5) * 50;
+                node.position.y = (Math.random() - 0.5) * 50;
+                node.position.z = (Math.random() - 0.5) * 50;
+            });
+            
+            // Run simulation
+            for (let iter = 0; iter < iterations; iter++) {
+                // Repulsive forces between all nodes
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dx = nodes[j].position.x - nodes[i].position.x;
+                        const dy = nodes[j].position.y - nodes[i].position.y;
+                        const dz = nodes[j].position.z - nodes[i].position.z;
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
+                        const force = k * k / dist;
+                        
+                        nodes[i].position.x -= (dx / dist) * force * c;
+                        nodes[i].position.y -= (dy / dist) * force * c;
+                        nodes[i].position.z -= (dz / dist) * force * c;
+                        nodes[j].position.x += (dx / dist) * force * c;
+                        nodes[j].position.y += (dy / dist) * force * c;
+                        nodes[j].position.z += (dz / dist) * force * c;
+                    }
+                }
+                
+                // Attractive forces for connected nodes
+                links.forEach(link => {
+                    const source = link.userData.source;
+                    const target = link.userData.target;
+                    const dx = target.position.x - source.position.x;
+                    const dy = target.position.y - source.position.y;
+                    const dz = target.position.z - source.position.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    const force = dist / k;
+                    
+                    source.position.x += (dx / dist) * force * c;
+                    source.position.y += (dy / dist) * force * c;
+                    source.position.z += (dz / dist) * force * c;
+                    target.position.x -= (dx / dist) * force * c;
+                    target.position.y -= (dy / dist) * force * c;
+                    target.position.z -= (dz / dist) * force * c;
+                });
+            }
+        }
+        
+        function applyHierarchicalLayout() {
+            const levels = {
+                'profile-edit': 0, 'billing': 0,
+                'agrhythm': 1,
+                'dashboard': 2, 'ai-chat': 2, 'insights': 2, 'collected-data': 2,
+                'reports': 3, 'audits': 3, 'maps': 3, 'crops': 3, 'infrastructure': 3,
+                'health-safety': 3, 'stock': 3, 'tasks': 3, 'finances': 3,
+                'operator-login': 3, 'farmer-login': 3, 'api-access': 3,
+                'drone-operators': 4, 'other-specialists': 4, 'referrals': 4,
+                'cameras': 4, 'gallagher': 4, 'iot': 4, 'necklaces': 4,
+                'companies': 5, 'products': 5
+            };
+            
+            const levelCounts = {};
+            Object.values(levels).forEach(level => {
+                levelCounts[level] = (levelCounts[level] || 0) + 1;
+            });
+            
+            const levelIndices = {};
+            
+            nodes.forEach(node => {
+                const level = levels[node.userData.id] || 0;
+                levelIndices[level] = (levelIndices[level] || 0) + 1;
+                
+                const xSpacing = 100 / (levelCounts[level] + 1);
+                node.position.x = (levelIndices[level] * xSpacing) - 50;
+                node.position.y = 40 - (level * 15);
+                node.position.z = (Math.random() - 0.5) * 20;
+            });
+        }
+        
+        function applyCircularLayout() {
+            const groupPositions = {
+                'entry': { radius: 60, angle: 0 },
+                'core': { radius: 20, angle: 0 },
+                'dashboard': { radius: 40, angle: Math.PI },
+                'operators': { radius: 50, angle: Math.PI / 2 },
+                'farmer': { radius: 50, angle: -Math.PI / 2 },
+                'external': { radius: 70, angle: Math.PI / 4 }
+            };
+            
+            const groupCounts = {};
+            nodes.forEach(node => {
+                const group = node.userData.group;
+                groupCounts[group] = (groupCounts[group] || 0) + 1;
+            });
+            
+            const groupIndices = {};
+            
+            nodes.forEach(node => {
+                const group = node.userData.group;
+                const groupPos = groupPositions[group] || { radius: 50, angle: 0 };
+                groupIndices[group] = (groupIndices[group] || 0) + 1;
+                
+                const angleOffset = (groupIndices[group] - 1) * (Math.PI * 2 / groupCounts[group]);
+                const angle = groupPos.angle + angleOffset;
+                
+                node.position.x = Math.cos(angle) * groupPos.radius;
+                node.position.y = Math.sin(angle) * groupPos.radius;
+                node.position.z = (Math.random() - 0.5) * 30;
+            });
+        }
+        
+        function switchVisualization(type) {
+            currentLayout = type;
+            
+            // Update button states
+            document.querySelectorAll('.viz-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Apply layout
+            switch(type) {
+                case 'hierarchical':
+                    applyHierarchicalLayout();
+                    break;
+                case 'circular':
+                    applyCircularLayout();
+                    break;
+                default:
+                    applyForceLayout();
+            }
+        }
+        
+        function setupControls() {
+            // Simple orbit controls
+            let isMouseDown = false;
+            let mouseButton = 0;
+            let startX = 0, startY = 0;
+            let cameraDistance = 100;
+            let theta = 0, phi = 0;
+            
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isMouseDown = true;
+                mouseButton = e.button;
+                startX = e.clientX;
+                startY = e.clientY;
+                e.preventDefault();
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => {
+                isMouseDown = false;
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                // Update mouse position for raycasting
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                if (isMouseDown) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    
+                    if (mouseButton === 0) { // Left click - rotate
+                        theta += deltaX * 0.01;
+                        phi = Math.max(-Math.PI/2, Math.min(Math.PI/2, phi + deltaY * 0.01));
+                        
+                        camera.position.x = cameraDistance * Math.cos(phi) * Math.cos(theta);
+                        camera.position.y = cameraDistance * Math.sin(phi);
+                        camera.position.z = cameraDistance * Math.cos(phi) * Math.sin(theta);
+                        camera.lookAt(0, 0, 0);
+                    } else if (mouseButton === 2) { // Right click - pan
+                        camera.position.x -= deltaX * 0.1;
+                        camera.position.y += deltaY * 0.1;
+                    }
+                    
+                    startX = e.clientX;
+                    startY = e.clientY;
+                }
+            });
+            
+            renderer.domElement.addEventListener('wheel', (e) => {
+                cameraDistance = Math.max(20, Math.min(200, cameraDistance + e.deltaY * 0.1));
+                
+                camera.position.x = cameraDistance * Math.cos(phi) * Math.cos(theta);
+                camera.position.y = cameraDistance * Math.sin(phi);
+                camera.position.z = cameraDistance * Math.cos(phi) * Math.sin(theta);
+                camera.lookAt(0, 0, 0);
+                
+                e.preventDefault();
+            });
+            
+            renderer.domElement.addEventListener('click', (e) => {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(nodes);
+                
+                if (intersects.length > 0) {
+                    selectedNode = intersects[0].object;
+                    updateNodeInfo(selectedNode.userData);
+                }
+            });
+            
+            renderer.domElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        function updateNodeInfo(nodeData) {
+            const infoDiv = document.getElementById('node-info');
+            const titleEl = document.getElementById('node-title');
+            const typeEl = document.getElementById('node-type');
+            const connectionsEl = document.getElementById('node-connections');
+            const detailsEl = document.getElementById('node-details');
+            
+            infoDiv.style.display = 'block';
+            titleEl.textContent = nodeData.label;
+            typeEl.textContent = `Type: ${nodeData.type}`;
+            
+            // Count connections
+            const incoming = siteData.links.filter(l => l.target === nodeData.id).length;
+            const outgoing = siteData.links.filter(l => l.source === nodeData.id).length;
+            connectionsEl.textContent = `Connections: ${incoming} in, ${outgoing} out`;
+            
+            // Add specific details based on type
+            let details = '';
+            switch(nodeData.type) {
+                case 'hub':
+                    details = 'Central platform hub connecting all major components';
+                    break;
+                case 'component':
+                    details = 'Core platform component';
+                    break;
+                case 'section':
+                    details = 'Dashboard section for specific functionality';
+                    break;
+                case 'external':
+                    details = 'External system integration via API';
+                    break;
+                case 'data':
+                    details = 'Data collection and storage component';
+                    break;
+                default:
+                    details = `${nodeData.group} component`;
+            }
+            detailsEl.textContent = details;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Check for hover
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(nodes);
+            
+            // Reset all nodes and links
+            nodes.forEach(node => {
+                node.scale.set(1, 1, 1);
+                node.material.emissiveIntensity = 0.2;
+            });
+            
+            links.forEach(link => {
+                link.material.opacity = 0.3;
+                link.material.color.setHex(0x64f4ff);
+            });
+            
+            // Highlight hovered node and its connections
+            if (intersects.length > 0) {
+                hoveredNode = intersects[0].object;
+                hoveredNode.scale.set(1.3, 1.3, 1.3);
+                hoveredNode.material.emissiveIntensity = 0.5;
+                
+                // Highlight connected links
+                links.forEach(link => {
+                    if (link.userData.source === hoveredNode || link.userData.target === hoveredNode) {
+                        link.material.opacity = 0.8;
+                        link.material.color.setHex(0xffff00);
+                    }
+                });
+            }
+            
+            // Update link positions
+            links.forEach(link => {
+                const positions = link.geometry.attributes.position.array;
+                positions[0] = link.userData.source.position.x;
+                positions[1] = link.userData.source.position.y;
+                positions[2] = link.userData.source.position.z;
+                positions[3] = link.userData.target.position.x;
+                positions[4] = link.userData.target.position.y;
+                positions[5] = link.userData.target.position.z;
+                link.geometry.attributes.position.needsUpdate = true;
+            });
+            
+            // Gentle rotation for visual interest
+            if (!isMouseDown && currentLayout === 'force') {
+                scene.rotation.y += 0.001;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the visualization
+        init();
+    </script>
+</body>
+</html>
