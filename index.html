@@ -128,6 +128,192 @@
             gap: 10px;
         }
         
+        #edit-controls {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .edit-button {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid rgba(255, 165, 0, 0.5);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+        }
+        
+        .edit-button:hover {
+            background: rgba(255, 165, 0, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .edit-button.active {
+            background: rgba(255, 165, 0, 0.3);
+            border-color: #ffa500;
+        }
+        
+        /* Node Editor Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: rgba(20, 20, 20, 0.95);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #64f4ff;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(100, 244, 255, 0.3);
+            padding-bottom: 15px;
+        }
+        
+        .modal-header h2 {
+            color: #64f4ff;
+            margin: 0;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        
+        .close-button:hover {
+            background: rgba(255, 107, 107, 0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #64f4ff;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(100, 244, 255, 0.3);
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #64f4ff;
+            box-shadow: 0 0 5px rgba(100, 244, 255, 0.5);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(100, 244, 255, 0.3);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: #64f4ff;
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            background: #4dd5e8;
+            transform: scale(1.05);
+        }
+        
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            background: rgba(100, 100, 100, 0.7);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(100, 100, 100, 0.9);
+        }
+        
+        /* Edit mode indicators */
+        .edit-mode-active {
+            cursor: pointer !important;
+        }
+        
+        .edit-mode-active canvas {
+            cursor: crosshair !important;
+        }
+        
+        .connection-preview {
+            pointer-events: none;
+        }
+        
         .viz-button {
             padding: 10px 20px;
             background: rgba(0, 0, 0, 0.7);
@@ -165,6 +351,14 @@
             <p>🖱️ <strong>Scroll:</strong> Zoom</p>
             <p>🖱️ <strong>Hover:</strong> Highlight connections</p>
             <p>🖱️ <strong>Click Node:</strong> Show details</p>
+            <div id="edit-controls-info" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
+                <h4>Edit Mode:</h4>
+                <p>🖘️ <strong>Click Node:</strong> Edit properties</p>
+                <p>➕ <strong>Add Node Button:</strong> Create new node</p>
+                <p>🖘️ <strong>Double-click Space:</strong> Create node at cursor</p>
+                <p>🖘️ <strong>Shift + Click Node:</strong> Start connection</p>
+                <p>🖘️ <strong>Right-click:</strong> Cancel connection</p>
+            </div>
         </div>
     </div>
     
@@ -172,6 +366,14 @@
         <button class="viz-button active" onclick="switchVisualization('force')">Force Graph</button>
         <button class="viz-button" onclick="switchVisualization('hierarchical')">Hierarchical</button>
         <button class="viz-button" onclick="switchVisualization('circular')">Circular</button>
+    </div>
+    
+    <div id="edit-controls">
+        <button class="edit-button" id="edit-mode-toggle" onclick="toggleEditMode()">🔧 Edit Mode</button>
+        <button class="edit-button" id="add-node" onclick="showAddNodeDialog()" style="display: none;">➕ Add Node</button>
+        <button class="edit-button" id="save-data" onclick="saveData()" style="display: none;">💾 Save</button>
+        <button class="edit-button" id="load-data" onclick="loadData()" style="display: none;">📁 Load</button>
+        <button class="edit-button" id="export-data" onclick="exportData()" style="display: none;">📤 Export</button>
     </div>
     
     <div class="legend">
@@ -203,6 +405,64 @@
         <p id="node-type"></p>
         <p id="node-connections"></p>
         <p id="node-details"></p>
+    </div>
+    
+    <!-- Node Editor Modal -->
+    <div class="modal-overlay" id="node-editor-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Edit Node</h2>
+                <button class="close-button" onclick="closeNodeEditor()">&times;</button>
+            </div>
+            
+            <form id="node-editor-form">
+                <div class="form-group">
+                    <label for="node-label">Label:</label>
+                    <input type="text" id="node-label" name="label" placeholder="Enter node label">
+                </div>
+                
+                <div class="form-group">
+                    <label for="node-type">Type:</label>
+                    <select id="node-type-select" name="type">
+                        <option value="entry">Entry/Login</option>
+                        <option value="hub">Hub</option>
+                        <option value="component">Component</option>
+                        <option value="section">Section</option>
+                        <option value="data">Data</option>
+                        <option value="integration">Integration</option>
+                        <option value="external">External</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="node-group">Group:</label>
+                    <select id="node-group-select" name="group">
+                        <option value="entry">Entry</option>
+                        <option value="core">Core</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="operators">Operators</option>
+                        <option value="farmer">Farmer</option>
+                        <option value="external">External</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="node-notes">Notes:</label>
+                    <textarea id="node-notes" name="notes" placeholder="Add notes about this node..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="node-description">Description:</label>
+                    <textarea id="node-description" name="description" placeholder="Detailed description of this node's function..."></textarea>
+                </div>
+            </form>
+            
+            <div class="button-group">
+                <button type="button" class="btn btn-danger" id="delete-node-btn" onclick="deleteCurrentNode()">Delete Node</button>
+                <button type="button" class="btn btn-secondary" onclick="closeNodeEditor()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveNodeChanges()">Save Changes</button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -302,6 +562,21 @@
         let selectedNode = null;
         let hoveredNode = null;
         let currentLayout = 'force';
+        
+        // Control variables
+        let isMouseDown = false;
+        let mouseButton = 0;
+        let startX = 0, startY = 0;
+        let cameraDistance = 100;
+        let theta = 0, phi = 0;
+        
+        // Edit mode variables
+        let isEditMode = false;
+        let currentEditingNode = null;
+        let isCreatingConnection = false;
+        let connectionSource = null;
+        let connectionPreview = null;
+        let nextNodeId = 1000; // Start from 1000 for new nodes
         
         // Node color mapping
         const nodeColors = {
@@ -562,13 +837,495 @@
             }
         }
         
+        // Edit Mode Functions
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const toggleBtn = document.getElementById('edit-mode-toggle');
+            const addNodeBtn = document.getElementById('add-node');
+            const saveBtn = document.getElementById('save-data');
+            const loadBtn = document.getElementById('load-data');
+            const exportBtn = document.getElementById('export-data');
+            const canvasContainer = document.getElementById('canvas-container');
+            const editControlsInfo = document.getElementById('edit-controls-info');
+            
+            if (isEditMode) {
+                toggleBtn.textContent = '👁️ View Mode';
+                toggleBtn.classList.add('active');
+                addNodeBtn.style.display = 'block';
+                saveBtn.style.display = 'block';
+                loadBtn.style.display = 'block';
+                exportBtn.style.display = 'block';
+                canvasContainer.classList.add('edit-mode-active');
+                editControlsInfo.style.display = 'block';
+                
+                // Update info panel
+                const infoDiv = document.querySelector('#info p:first-of-type');
+                infoDiv.textContent = 'EDIT MODE: Click nodes to edit, use Add Node button or double-click empty space to create new nodes';
+            } else {
+                toggleBtn.textContent = '🔧 Edit Mode';
+                toggleBtn.classList.remove('active');
+                addNodeBtn.style.display = 'none';
+                saveBtn.style.display = 'none';
+                loadBtn.style.display = 'none';
+                exportBtn.style.display = 'none';
+                canvasContainer.classList.remove('edit-mode-active');
+                editControlsInfo.style.display = 'none';
+                
+                // Reset info panel
+                const infoDiv = document.querySelector('#info p:first-of-type');
+                infoDiv.textContent = 'Interactive 3D visualization of website structure';
+                
+                // Close any open modals
+                closeNodeEditor();
+                cancelConnectionCreation();
+            }
+        }
+        
+        // Node Editor Modal Functions
+        function openNodeEditor(nodeObj, isNewNode = false) {
+            currentEditingNode = nodeObj;
+            const modal = document.getElementById('node-editor-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const deleteBtn = document.getElementById('delete-node-btn');
+            
+            // Populate form with current node data
+            document.getElementById('node-label').value = nodeObj.userData.label || '';
+            document.getElementById('node-type-select').value = nodeObj.userData.type || 'component';
+            document.getElementById('node-group-select').value = nodeObj.userData.group || 'core';
+            document.getElementById('node-notes').value = nodeObj.userData.notes || '';
+            document.getElementById('node-description').value = nodeObj.userData.description || '';
+            
+            // Update modal title
+            modalTitle.textContent = isNewNode ? 'Create New Node' : 'Edit Node';
+            
+            // Hide delete button for new nodes
+            deleteBtn.style.display = isNewNode ? 'none' : 'block';
+            
+            // Show modal
+            modal.style.display = 'flex';
+        }
+        
+        function closeNodeEditor() {
+            const modal = document.getElementById('node-editor-modal');
+            modal.style.display = 'none';
+            currentEditingNode = null;
+        }
+        
+        function saveNodeChanges() {
+            if (!currentEditingNode) return;
+            
+            const label = document.getElementById('node-label').value.trim();
+            const type = document.getElementById('node-type-select').value;
+            const group = document.getElementById('node-group-select').value;
+            const notes = document.getElementById('node-notes').value.trim();
+            const description = document.getElementById('node-description').value.trim();
+            
+            if (!label) {
+                alert('Please provide a label for the node.');
+                return;
+            }
+            
+            // Check if this is a new node
+            const isNewNode = !siteData.nodes.find(n => n.id === currentEditingNode.userData.id);
+            
+            // Update node data
+            currentEditingNode.userData.label = label;
+            currentEditingNode.userData.type = type;
+            currentEditingNode.userData.group = group;
+            currentEditingNode.userData.notes = notes;
+            currentEditingNode.userData.description = description;
+            
+            // Update the material color based on type
+            const newColor = nodeColors[type] || 0xffffff;
+            currentEditingNode.material.color.setHex(newColor);
+            currentEditingNode.material.emissive.setHex(newColor);
+            
+            // Update the label sprite
+            updateNodeLabel(currentEditingNode);
+            
+            // Add to siteData if it's a new node
+            if (isNewNode) {
+                siteData.nodes.push({
+                    id: currentEditingNode.userData.id,
+                    label: label,
+                    type: type,
+                    group: group,
+                    notes: notes,
+                    description: description
+                });
+            } else {
+                // Update existing node in siteData
+                const nodeIndex = siteData.nodes.findIndex(n => n.id === currentEditingNode.userData.id);
+                if (nodeIndex !== -1) {
+                    siteData.nodes[nodeIndex] = {
+                        ...siteData.nodes[nodeIndex],
+                        label: label,
+                        type: type,
+                        group: group,
+                        notes: notes,
+                        description: description
+                    };
+                }
+            }
+            
+            closeNodeEditor();
+        }
+        
+        function updateNodeLabel(nodeObj) {
+            // Remove existing sprite
+            const existingSprite = nodeObj.children.find(child => child.type === 'Sprite');
+            if (existingSprite) {
+                nodeObj.remove(existingSprite);
+            }
+            
+            // Create new label
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.fillStyle = 'white';
+            context.font = '24px Arial';
+            context.textAlign = 'center';
+            context.fillText(nodeObj.userData.label, 128, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: texture,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(10, 2.5, 1);
+            sprite.position.y = -4;
+            nodeObj.add(sprite);
+        }
+        
+        function deleteCurrentNode() {
+            if (!currentEditingNode || !confirm('Are you sure you want to delete this node? This will also remove all connections to this node.')) {
+                return;
+            }
+            
+            const nodeId = currentEditingNode.userData.id;
+            
+            // Remove from siteData.nodes
+            siteData.nodes = siteData.nodes.filter(n => n.id !== nodeId);
+            
+            // Remove all links connected to this node
+            siteData.links = siteData.links.filter(l => l.source !== nodeId && l.target !== nodeId);
+            
+            // Remove from scene
+            scene.remove(currentEditingNode);
+            
+            // Remove from nodes array
+            const nodeIndex = nodes.indexOf(currentEditingNode);
+            if (nodeIndex > -1) {
+                nodes.splice(nodeIndex, 1);
+            }
+            
+            // Remove associated links from scene
+            links.forEach((link, index) => {
+                if (link.userData.source === currentEditingNode || link.userData.target === currentEditingNode) {
+                    scene.remove(link);
+                    links.splice(index, 1);
+                }
+            });
+            
+            // Recreate links to update the visualization
+            recreateLinks();
+            
+            closeNodeEditor();
+        }
+        
+        // Node Creation Functions
+        function showAddNodeDialog() {
+            if (!isEditMode) return;
+            
+            // Create a new node at the center of the current view
+            const centerPosition = new THREE.Vector3(0, 0, 0);
+            
+            // Add some randomness to avoid overlapping with existing nodes
+            centerPosition.x += (Math.random() - 0.5) * 10;
+            centerPosition.y += (Math.random() - 0.5) * 10;
+            centerPosition.z += (Math.random() - 0.5) * 10;
+            
+            createNewNode(centerPosition);
+        }
+        
+        function createNewNode(position) {
+            const nodeId = 'node-' + nextNodeId++;
+            const nodeGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const material = new THREE.MeshPhongMaterial({
+                color: nodeColors.component || 0x4ecdc4,
+                emissive: nodeColors.component || 0x4ecdc4,
+                emissiveIntensity: 0.2,
+                shininess: 100
+            });
+            
+            const nodeMesh = new THREE.Mesh(nodeGeometry, material);
+            nodeMesh.userData = {
+                id: nodeId,
+                label: 'New Node',
+                type: 'component',
+                group: 'core',
+                notes: '',
+                description: ''
+            };
+            
+            // Set position
+            nodeMesh.position.copy(position);
+            
+            // Create initial label
+            updateNodeLabel(nodeMesh);
+            
+            // Add to scene and arrays
+            scene.add(nodeMesh);
+            nodes.push(nodeMesh);
+            
+            // Open editor for the new node
+            openNodeEditor(nodeMesh, true);
+            
+            return nodeMesh;
+        }
+        
+        function recreateLinks() {
+            // Remove all existing links from scene
+            links.forEach(link => scene.remove(link));
+            links.length = 0;
+            
+            // Recreate links based on siteData
+            const linkMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x64f4ff, 
+                transparent: true, 
+                opacity: 0.3,
+                linewidth: 2
+            });
+            
+            siteData.links.forEach(linkData => {
+                const sourceNode = nodes.find(n => n.userData.id === linkData.source);
+                const targetNode = nodes.find(n => n.userData.id === linkData.target);
+                
+                if (sourceNode && targetNode) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = new Float32Array(6);
+                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    
+                    const line = new THREE.Line(geometry, linkMaterial.clone());
+                    line.userData = { source: sourceNode, target: targetNode };
+                    
+                    scene.add(line);
+                    links.push(line);
+                }
+            });
+        }
+        
+        // Connection Creation Functions
+        function startConnectionCreation(sourceNode) {
+            if (!isEditMode) return;
+            
+            isCreatingConnection = true;
+            connectionSource = sourceNode;
+            
+            // Create preview line
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(6);
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0xffff00, 
+                transparent: true, 
+                opacity: 0.7,
+                linewidth: 3
+            });
+            
+            connectionPreview = new THREE.Line(geometry, material);
+            connectionPreview.userData.isPreview = true;
+            scene.add(connectionPreview);
+            
+            // Update cursor
+            document.getElementById('canvas-container').style.cursor = 'crosshair';
+        }
+        
+        function updateConnectionPreview(mousePos) {
+            if (!connectionPreview || !connectionSource) return;
+            
+            // Convert mouse position to world coordinates
+            const vector = new THREE.Vector3(
+                (mousePos.x / window.innerWidth) * 2 - 1,
+                -(mousePos.y / window.innerHeight) * 2 + 1,
+                0.5
+            );
+            vector.unproject(camera);
+            
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.z / dir.z;
+            const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+            
+            // Update preview line positions
+            const positions = connectionPreview.geometry.attributes.position.array;
+            positions[0] = connectionSource.position.x;
+            positions[1] = connectionSource.position.y;
+            positions[2] = connectionSource.position.z;
+            positions[3] = pos.x;
+            positions[4] = pos.y;
+            positions[5] = pos.z;
+            connectionPreview.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        function completeConnection(targetNode) {
+            if (!isCreatingConnection || !connectionSource || connectionSource === targetNode) {
+                cancelConnectionCreation();
+                return;
+            }
+            
+            // Check if connection already exists
+            const existingConnection = siteData.links.find(link => 
+                (link.source === connectionSource.userData.id && link.target === targetNode.userData.id) ||
+                (link.source === targetNode.userData.id && link.target === connectionSource.userData.id)
+            );
+            
+            if (existingConnection) {
+                alert('Connection already exists between these nodes.');
+                cancelConnectionCreation();
+                return;
+            }
+            
+            // Add new connection to siteData
+            siteData.links.push({
+                source: connectionSource.userData.id,
+                target: targetNode.userData.id
+            });
+            
+            // Recreate all links to include the new one
+            recreateLinks();
+            
+            cancelConnectionCreation();
+        }
+        
+        function cancelConnectionCreation() {
+            if (connectionPreview) {
+                scene.remove(connectionPreview);
+                connectionPreview = null;
+            }
+            
+            isCreatingConnection = false;
+            connectionSource = null;
+            document.getElementById('canvas-container').style.cursor = '';
+        }
+        
+        // Data Persistence Functions
+        function saveData() {
+            try {
+                const dataToSave = {
+                    nodes: siteData.nodes.map(node => ({
+                        ...node,
+                        position: {
+                            x: nodes.find(n => n.userData.id === node.id)?.position.x || 0,
+                            y: nodes.find(n => n.userData.id === node.id)?.position.y || 0,
+                            z: nodes.find(n => n.userData.id === node.id)?.position.z || 0
+                        }
+                    })),
+                    links: siteData.links,
+                    savedAt: new Date().toISOString(),
+                    version: '1.0'
+                };
+                
+                localStorage.setItem('agrhythm-3d-platform-data', JSON.stringify(dataToSave));
+                alert('Data saved successfully to local storage!');
+            } catch (error) {
+                alert('Error saving data: ' + error.message);
+            }
+        }
+        
+        function loadData() {
+            try {
+                const savedData = localStorage.getItem('agrhythm-3d-platform-data');
+                if (!savedData) {
+                    alert('No saved data found.');
+                    return;
+                }
+                
+                const data = JSON.parse(savedData);
+                if (!data.nodes || !data.links) {
+                    alert('Invalid data format.');
+                    return;
+                }
+                
+                if (confirm('Loading will replace current data. Are you sure?')) {
+                    // Clear current visualization
+                    clearVisualization();
+                    
+                    // Load the data
+                    siteData.nodes = data.nodes;
+                    siteData.links = data.links;
+                    
+                    // Recreate visualization
+                    createNodes();
+                    createLinks();
+                    
+                    // Restore positions if available
+                    if (data.nodes[0].position) {
+                        data.nodes.forEach(nodeData => {
+                            const node = nodes.find(n => n.userData.id === nodeData.id);
+                            if (node && nodeData.position) {
+                                node.position.set(nodeData.position.x, nodeData.position.y, nodeData.position.z);
+                            }
+                        });
+                    } else {
+                        // Apply current layout if no positions saved
+                        applyForceLayout();
+                    }
+                    
+                    alert('Data loaded successfully!');
+                }
+            } catch (error) {
+                alert('Error loading data: ' + error.message);
+            }
+        }
+        
+        function exportData() {
+            try {
+                const dataToExport = {
+                    nodes: siteData.nodes.map(node => ({
+                        ...node,
+                        position: {
+                            x: nodes.find(n => n.userData.id === node.id)?.position.x || 0,
+                            y: nodes.find(n => n.userData.id === node.id)?.position.y || 0,
+                            z: nodes.find(n => n.userData.id === node.id)?.position.z || 0
+                        }
+                    })),
+                    links: siteData.links,
+                    exportedAt: new Date().toISOString(),
+                    version: '1.0'
+                };
+                
+                const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `agrhythm-platform-data-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                alert('Data exported successfully!');
+            } catch (error) {
+                alert('Error exporting data: ' + error.message);
+            }
+        }
+        
+        function clearVisualization() {
+            // Remove all nodes from scene
+            nodes.forEach(node => scene.remove(node));
+            nodes.length = 0;
+            
+            // Remove all links from scene
+            links.forEach(link => scene.remove(link));
+            links.length = 0;
+        }
+        
         function setupControls() {
             // Simple orbit controls
-            let isMouseDown = false;
-            let mouseButton = 0;
-            let startX = 0, startY = 0;
-            let cameraDistance = 100;
-            let theta = 0, phi = 0;
             
             renderer.domElement.addEventListener('mousedown', (e) => {
                 isMouseDown = true;
@@ -586,6 +1343,11 @@
                 // Update mouse position for raycasting
                 mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                // Update connection preview if creating connection
+                if (isCreatingConnection) {
+                    updateConnectionPreview({ x: e.clientX, y: e.clientY });
+                }
                 
                 if (isMouseDown) {
                     const deltaX = e.clientX - startX;
@@ -625,13 +1387,63 @@
                 const intersects = raycaster.intersectObjects(nodes);
                 
                 if (intersects.length > 0) {
-                    selectedNode = intersects[0].object;
-                    updateNodeInfo(selectedNode.userData);
+                    const clickedNode = intersects[0].object;
+                    
+                    if (isCreatingConnection) {
+                        // Complete connection if in connection creation mode
+                        completeConnection(clickedNode);
+                    } else if (isEditMode) {
+                        if (e.shiftKey) {
+                            // Shift + click to start connection creation
+                            startConnectionCreation(clickedNode);
+                        } else {
+                            // Regular click in edit mode - open editor
+                            openNodeEditor(clickedNode);
+                        }
+                    } else {
+                        // View mode - show node info
+                        selectedNode = clickedNode;
+                        updateNodeInfo(selectedNode.userData);
+                    }
+                } else if (isEditMode && !isCreatingConnection) {
+                    // Click on empty space in edit mode - hide node info
+                    document.getElementById('node-info').style.display = 'none';
+                } else {
+                    // Click on empty space in view mode - hide node info
+                    document.getElementById('node-info').style.display = 'none';
+                }
+            });
+            
+            renderer.domElement.addEventListener('dblclick', (e) => {
+                if (isEditMode && !isCreatingConnection) {
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(nodes);
+                    
+                    if (intersects.length === 0) {
+                        // Double-click on empty space - create new node
+                        const vector = new THREE.Vector3(
+                            (e.clientX / window.innerWidth) * 2 - 1,
+                            -(e.clientY / window.innerHeight) * 2 + 1,
+                            0.5
+                        );
+                        vector.unproject(camera);
+                        
+                        const dir = vector.sub(camera.position).normalize();
+                        const distance = -camera.position.z / dir.z;
+                        const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+                        
+                        createNewNode(pos);
+                    }
                 }
             });
             
             renderer.domElement.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
+                
+                // Right-click to cancel connection creation
+                if (isCreatingConnection) {
+                    cancelConnectionCreation();
+                }
             });
             
             window.addEventListener('resize', () => {
@@ -650,34 +1462,46 @@
             
             infoDiv.style.display = 'block';
             titleEl.textContent = nodeData.label;
-            typeEl.textContent = `Type: ${nodeData.type}`;
+            typeEl.textContent = `Type: ${nodeData.type} | Group: ${nodeData.group}`;
             
             // Count connections
             const incoming = siteData.links.filter(l => l.target === nodeData.id).length;
             const outgoing = siteData.links.filter(l => l.source === nodeData.id).length;
             connectionsEl.textContent = `Connections: ${incoming} in, ${outgoing} out`;
             
-            // Add specific details based on type
+            // Show notes and description if available
             let details = '';
-            switch(nodeData.type) {
-                case 'hub':
-                    details = 'Central platform hub connecting all major components';
-                    break;
-                case 'component':
-                    details = 'Core platform component';
-                    break;
-                case 'section':
-                    details = 'Dashboard section for specific functionality';
-                    break;
-                case 'external':
-                    details = 'External system integration via API';
-                    break;
-                case 'data':
-                    details = 'Data collection and storage component';
-                    break;
-                default:
-                    details = `${nodeData.group} component`;
+            if (nodeData.notes) {
+                details += `Notes: ${nodeData.notes}\n`;
             }
+            if (nodeData.description) {
+                details += `Description: ${nodeData.description}\n`;
+            }
+            
+            // Add default details based on type if no custom description
+            if (!nodeData.description) {
+                switch(nodeData.type) {
+                    case 'hub':
+                        details += 'Central platform hub connecting all major components';
+                        break;
+                    case 'component':
+                        details += 'Core platform component';
+                        break;
+                    case 'section':
+                        details += 'Dashboard section for specific functionality';
+                        break;
+                    case 'external':
+                        details += 'External system integration via API';
+                        break;
+                    case 'data':
+                        details += 'Data collection and storage component';
+                        break;
+                    default:
+                        details += `${nodeData.group} component`;
+                }
+            }
+            
+            detailsEl.style.whiteSpace = 'pre-line';
             detailsEl.textContent = details;
         }
         
