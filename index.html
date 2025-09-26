@@ -334,10 +334,70 @@
             background: rgba(100, 244, 255, 0.3);
             border-color: #64f4ff;
         }
+        
+        /* 2D JSON Visualization */
+        #json2d-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: none;
+            overflow: hidden;
+        }
+        
+        #json2d-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        
+        #json2d-canvas:active {
+            cursor: grabbing;
+        }
+        
+        .json2d-node {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #64f4ff;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .json2d-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px rgba(100, 244, 255, 0.5);
+            border-color: #ffa500;
+        }
+        
+        .json2d-node.selected {
+            background: rgba(100, 244, 255, 0.9);
+            color: #000;
+        }
+        
+        .json2d-connection {
+            position: absolute;
+            background: #64f4ff;
+            z-index: 1;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
+    
+    <!-- 2D JSON Visualization Container -->
+    <div id="json2d-container">
+        <svg id="json2d-canvas" width="100%" height="100%"></svg>
+    </div>
     
     <div id="info">
         <h1>AgRhythm Platform</h1>
@@ -363,9 +423,8 @@
     </div>
     
     <div id="visualization-toggle">
-        <button class="viz-button active" onclick="switchVisualization('force')">Force Graph</button>
-        <button class="viz-button" onclick="switchVisualization('hierarchical')">Hierarchical</button>
-        <button class="viz-button" onclick="switchVisualization('circular')">Circular</button>
+        <button class="viz-button active" onclick="switchVisualization('hierarchical')">3D Hierarchical</button>
+        <button class="viz-button" onclick="switchVisualization('json2d')">📊 2D JSON Graph</button>
     </div>
     
     <div id="edit-controls">
@@ -561,7 +620,7 @@
         let raycaster, mouse;
         let selectedNode = null;
         let hoveredNode = null;
-        let currentLayout = 'force';
+        let currentLayout = 'hierarchical';
         
         // Control variables
         let isMouseDown = false;
@@ -624,7 +683,7 @@
             // Create visualization
             createNodes();
             createLinks();
-            applyForceLayout();
+            applyHierarchicalLayout();
             
             // Add mouse controls
             setupControls();
@@ -712,58 +771,6 @@
             });
         }
         
-        function applyForceLayout() {
-            // Simple force-directed layout
-            const iterations = 100;
-            const k = 30; // Spring constant
-            const c = 0.1; // Damping
-            
-            // Initialize random positions
-            nodes.forEach(node => {
-                node.position.x = (Math.random() - 0.5) * 50;
-                node.position.y = (Math.random() - 0.5) * 50;
-                node.position.z = (Math.random() - 0.5) * 50;
-            });
-            
-            // Run simulation
-            for (let iter = 0; iter < iterations; iter++) {
-                // Repulsive forces between all nodes
-                for (let i = 0; i < nodes.length; i++) {
-                    for (let j = i + 1; j < nodes.length; j++) {
-                        const dx = nodes[j].position.x - nodes[i].position.x;
-                        const dy = nodes[j].position.y - nodes[i].position.y;
-                        const dz = nodes[j].position.z - nodes[i].position.z;
-                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
-                        const force = k * k / dist;
-                        
-                        nodes[i].position.x -= (dx / dist) * force * c;
-                        nodes[i].position.y -= (dy / dist) * force * c;
-                        nodes[i].position.z -= (dz / dist) * force * c;
-                        nodes[j].position.x += (dx / dist) * force * c;
-                        nodes[j].position.y += (dy / dist) * force * c;
-                        nodes[j].position.z += (dz / dist) * force * c;
-                    }
-                }
-                
-                // Attractive forces for connected nodes
-                links.forEach(link => {
-                    const source = link.userData.source;
-                    const target = link.userData.target;
-                    const dx = target.position.x - source.position.x;
-                    const dy = target.position.y - source.position.y;
-                    const dz = target.position.z - source.position.z;
-                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    const force = dist / k;
-                    
-                    source.position.x += (dx / dist) * force * c;
-                    source.position.y += (dy / dist) * force * c;
-                    source.position.z += (dz / dist) * force * c;
-                    target.position.x -= (dx / dist) * force * c;
-                    target.position.y -= (dy / dist) * force * c;
-                    target.position.z -= (dz / dist) * force * c;
-                });
-            }
-        }
         
         function applyHierarchicalLayout() {
             const levels = {
@@ -796,37 +803,6 @@
             });
         }
         
-        function applyCircularLayout() {
-            const groupPositions = {
-                'entry': { radius: 60, angle: 0 },
-                'core': { radius: 20, angle: 0 },
-                'dashboard': { radius: 40, angle: Math.PI },
-                'operators': { radius: 50, angle: Math.PI / 2 },
-                'farmer': { radius: 50, angle: -Math.PI / 2 },
-                'external': { radius: 70, angle: Math.PI / 4 }
-            };
-            
-            const groupCounts = {};
-            nodes.forEach(node => {
-                const group = node.userData.group;
-                groupCounts[group] = (groupCounts[group] || 0) + 1;
-            });
-            
-            const groupIndices = {};
-            
-            nodes.forEach(node => {
-                const group = node.userData.group;
-                const groupPos = groupPositions[group] || { radius: 50, angle: 0 };
-                groupIndices[group] = (groupIndices[group] || 0) + 1;
-                
-                const angleOffset = (groupIndices[group] - 1) * (Math.PI * 2 / groupCounts[group]);
-                const angle = groupPos.angle + angleOffset;
-                
-                node.position.x = Math.cos(angle) * groupPos.radius;
-                node.position.y = Math.sin(angle) * groupPos.radius;
-                node.position.z = (Math.random() - 0.5) * 30;
-            });
-        }
         
         function switchVisualization(type) {
             currentLayout = type;
@@ -837,16 +813,271 @@
             });
             event.target.classList.add('active');
             
-            // Apply layout
-            switch(type) {
-                case 'hierarchical':
-                    applyHierarchicalLayout();
-                    break;
-                case 'circular':
-                    applyCircularLayout();
-                    break;
-                default:
-                    applyForceLayout();
+            const canvasContainer = document.getElementById('canvas-container');
+            const json2dContainer = document.getElementById('json2d-container');
+            
+            // Show/hide containers based on view type
+            if (type === 'json2d') {
+                canvasContainer.style.display = 'none';
+                json2dContainer.style.display = 'block';
+                initJSON2DVisualization();
+            } else {
+                canvasContainer.style.display = 'block';
+                json2dContainer.style.display = 'none';
+                
+                // Apply 3D layout - only hierarchical now
+                applyHierarchicalLayout();
+            }
+        }
+        
+        // 2D JSON Visualization Functions
+        let svg2d = null;
+        let json2dNodes = [];
+        let json2dScale = 1;
+        let json2dPanX = 0;
+        let json2dPanY = 0;
+        
+        function initJSON2DVisualization() {
+            const svg = document.getElementById('json2d-canvas');
+            svg.innerHTML = ''; // Clear existing content
+            
+            // Convert siteData to JSON format for visualization
+            const jsonData = {
+                nodes: siteData.nodes.map(node => ({
+                    id: node.id,
+                    label: node.label,
+                    type: node.type,
+                    group: node.group,
+                    description: node.description || '',
+                    notes: node.notes || ''
+                })),
+                links: siteData.links
+            };
+            
+            // Create 2D graph visualization
+            render2DJsonGraph(jsonData, svg);
+            
+            // Add pan and zoom functionality
+            setup2DControls(svg);
+        }
+        
+        function render2DJsonGraph(data, svg) {
+            const width = svg.clientWidth || window.innerWidth;
+            const height = svg.clientHeight || window.innerHeight;
+            
+            // Create main group for all elements
+            const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            mainGroup.id = 'main-group';
+            svg.appendChild(mainGroup);
+            
+            // Position nodes in a hierarchical tree layout
+            const positionedNodes = calculate2DPositions(data.nodes, data.links, width, height);
+            
+            // Render connections first (so they appear behind nodes)
+            renderConnections(data.links, positionedNodes, mainGroup);
+            
+            // Render nodes
+            renderNodes(positionedNodes, mainGroup);
+            
+            json2dNodes = positionedNodes;
+        }
+        
+        function calculate2DPositions(nodes, links, width, height) {
+            const positioned = nodes.map(node => ({ ...node }));
+            const nodeMap = new Map();
+            positioned.forEach(node => nodeMap.set(node.id, node));
+            
+            // Create adjacency list
+            const adjacencyList = new Map();
+            positioned.forEach(node => adjacencyList.set(node.id, []));
+            
+            links.forEach(link => {
+                if (adjacencyList.has(link.source)) {
+                    adjacencyList.get(link.source).push(link.target);
+                }
+            });
+            
+            // Find root node (AgRhythm hub or first node)
+            const rootNode = positioned.find(n => n.id === 'agrhythm') || positioned[0];
+            if (!rootNode) return positioned;
+            
+            // BFS to assign levels and positions
+            const visited = new Set();
+            const queue = [{ node: rootNode, level: 0, index: 0 }];
+            const levels = new Map();
+            
+            visited.add(rootNode.id);
+            
+            while (queue.length > 0) {
+                const { node, level, index } = queue.shift();
+                
+                if (!levels.has(level)) {
+                    levels.set(level, []);
+                }
+                levels.get(level).push(node);
+                
+                // Add children to queue
+                const children = adjacencyList.get(node.id) || [];
+                children.forEach((childId, childIndex) => {
+                    if (!visited.has(childId) && nodeMap.has(childId)) {
+                        visited.add(childId);
+                        queue.push({ node: nodeMap.get(childId), level: level + 1, index: childIndex });
+                    }
+                });
+            }
+            
+            // Add unvisited nodes to the last level
+            positioned.forEach(node => {
+                if (!visited.has(node.id)) {
+                    const lastLevel = Math.max(...levels.keys(), 0) + 1;
+                    if (!levels.has(lastLevel)) {
+                        levels.set(lastLevel, []);
+                    }
+                    levels.get(lastLevel).push(node);
+                }
+            });
+            
+            // Position nodes based on their level
+            const levelHeight = height / (levels.size + 1);
+            
+            levels.forEach((levelNodes, level) => {
+                const levelWidth = width / (levelNodes.length + 1);
+                levelNodes.forEach((node, index) => {
+                    node.x = (index + 1) * levelWidth;
+                    node.y = (level + 1) * levelHeight;
+                });
+            });
+            
+            return positioned;
+        }
+        
+        function renderNodes(nodes, parent) {
+            nodes.forEach(node => {
+                // Create node group
+                const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                nodeGroup.setAttribute('class', 'json2d-node-group');
+                nodeGroup.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                
+                // Create node rectangle
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('width', '120');
+                rect.setAttribute('height', '60');
+                rect.setAttribute('x', '-60');
+                rect.setAttribute('y', '-30');
+                rect.setAttribute('rx', '8');
+                rect.setAttribute('fill', getNodeColor2D(node.type));
+                rect.setAttribute('stroke', '#64f4ff');
+                rect.setAttribute('stroke-width', '2');
+                rect.setAttribute('class', 'json2d-node-rect');
+                
+                // Create node label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dy', '5');
+                text.setAttribute('fill', '#333');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = node.label.length > 12 ? node.label.substring(0, 12) + '...' : node.label;
+                
+                nodeGroup.appendChild(rect);
+                nodeGroup.appendChild(text);
+                parent.appendChild(nodeGroup);
+                
+                // Add hover and click events
+                nodeGroup.addEventListener('mouseenter', () => {
+                    rect.setAttribute('stroke', '#ffa500');
+                    rect.setAttribute('stroke-width', '3');
+                    nodeGroup.style.transform = `translate(${node.x}px, ${node.y}px) scale(1.1)`;
+                });
+                
+                nodeGroup.addEventListener('mouseleave', () => {
+                    rect.setAttribute('stroke', '#64f4ff');
+                    rect.setAttribute('stroke-width', '2');
+                    nodeGroup.style.transform = `translate(${node.x}px, ${node.y}px) scale(1)`;
+                });
+                
+                nodeGroup.addEventListener('click', () => {
+                    updateNodeInfo(node);
+                });
+            });
+        }
+        
+        function renderConnections(links, nodes, parent) {
+            const nodeMap = new Map();
+            nodes.forEach(node => nodeMap.set(node.id, node));
+            
+            links.forEach(link => {
+                const sourceNode = nodeMap.get(link.source);
+                const targetNode = nodeMap.get(link.target);
+                
+                if (sourceNode && targetNode) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', sourceNode.x);
+                    line.setAttribute('y1', sourceNode.y);
+                    line.setAttribute('x2', targetNode.x);
+                    line.setAttribute('y2', targetNode.y);
+                    line.setAttribute('stroke', '#64f4ff');
+                    line.setAttribute('stroke-width', '2');
+                    line.setAttribute('opacity', '0.6');
+                    line.setAttribute('class', 'json2d-connection');
+                    
+                    parent.appendChild(line);
+                }
+            });
+        }
+        
+        function getNodeColor2D(type) {
+            const colors = {
+                entry: 'rgba(255, 107, 107, 0.9)',
+                hub: 'rgba(78, 205, 196, 0.9)',
+                component: 'rgba(78, 205, 196, 0.9)',
+                data: 'rgba(78, 205, 196, 0.9)',
+                section: 'rgba(69, 183, 209, 0.9)',
+                login: 'rgba(255, 107, 107, 0.9)',
+                integration: 'rgba(187, 143, 206, 0.9)',
+                external: 'rgba(187, 143, 206, 0.9)'
+            };
+            return colors[type] || 'rgba(255, 255, 255, 0.9)';
+        }
+        
+        function setup2DControls(svg) {
+            let isDragging = false;
+            let startX, startY;
+            
+            svg.addEventListener('mousedown', (e) => {
+                if (e.target === svg || e.target.id === 'main-group') {
+                    isDragging = true;
+                    startX = e.clientX - json2dPanX;
+                    startY = e.clientY - json2dPanY;
+                    svg.style.cursor = 'grabbing';
+                }
+            });
+            
+            svg.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    json2dPanX = e.clientX - startX;
+                    json2dPanY = e.clientY - startY;
+                    updateTransform();
+                }
+            });
+            
+            svg.addEventListener('mouseup', () => {
+                isDragging = false;
+                svg.style.cursor = 'grab';
+            });
+            
+            svg.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                json2dScale = Math.max(0.1, Math.min(3, json2dScale * scaleFactor));
+                updateTransform();
+            });
+            
+            function updateTransform() {
+                const mainGroup = svg.querySelector('#main-group');
+                if (mainGroup) {
+                    mainGroup.setAttribute('transform', `translate(${json2dPanX}, ${json2dPanY}) scale(${json2dScale})`);
+                }
             }
         }
         
@@ -1263,7 +1494,7 @@
                         });
                     } else {
                         // Apply current layout if no positions saved
-                        applyForceLayout();
+                        applyHierarchicalLayout();
                     }
                     
                     alert('Data loaded successfully!');
@@ -1604,10 +1835,7 @@
                 }
             });
             
-            // Gentle rotation for visual interest
-            if (!isMouseDown && currentLayout === 'force') {
-                scene.rotation.y += 0.001;
-            }
+            // Note: Gentle rotation removed for structured layouts
             
             renderer.render(scene, camera);
         }
