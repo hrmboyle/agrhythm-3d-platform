@@ -677,8 +677,8 @@
             const linkMaterial = new THREE.LineBasicMaterial({ 
                 color: 0x64f4ff, 
                 transparent: true, 
-                opacity: 0.5,
-                linewidth: 5
+                opacity: 0.8,
+                linewidth: 8 // Much thicker
             });
             
             siteData.links.forEach(linkData => {
@@ -690,11 +690,24 @@
                     const positions = new Float32Array(6);
                     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
                     
-                    const line = new THREE.Line(geometry, linkMaterial.clone());
-                    line.userData = { source: sourceNode, target: targetNode };
+                    // Create multiple parallel lines for thickness effect
+                    const linkGroup = new THREE.Group();
                     
-                    scene.add(line);
-                    links.push(line);
+                    // Main line
+                    const mainLine = new THREE.Line(geometry.clone(), linkMaterial.clone());
+                    linkGroup.add(mainLine);
+                    
+                    // Add slightly offset parallel lines for thickness
+                    for (let i = 0; i < 3; i++) {
+                        const offsetLine = new THREE.Line(geometry.clone(), linkMaterial.clone());
+                        const offset = (i + 1) * 0.02;
+                        offsetLine.position.set(offset, offset * 0.5, offset * 0.3);
+                        linkGroup.add(offsetLine);
+                    }
+                    
+                    linkGroup.userData = { source: sourceNode, target: targetNode, isLink: true };
+                    scene.add(linkGroup);
+                    links.push(linkGroup);
                 }
             });
         }
@@ -1092,30 +1105,8 @@
             links.forEach(link => scene.remove(link));
             links.length = 0;
             
-            // Recreate links based on siteData
-            const linkMaterial = new THREE.LineBasicMaterial({ 
-                color: 0x64f4ff, 
-                transparent: true, 
-                opacity: 0.5,
-                linewidth: 5
-            });
-            
-            siteData.links.forEach(linkData => {
-                const sourceNode = nodes.find(n => n.userData.id === linkData.source);
-                const targetNode = nodes.find(n => n.userData.id === linkData.target);
-                
-                if (sourceNode && targetNode) {
-                    const geometry = new THREE.BufferGeometry();
-                    const positions = new Float32Array(6);
-                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                    
-                    const line = new THREE.Line(geometry, linkMaterial.clone());
-                    line.userData = { source: sourceNode, target: targetNode };
-                    
-                    scene.add(line);
-                    links.push(line);
-                }
-            });
+            // Recreate using the same method as createLinks
+            createLinks();
         }
         
         // Connection Creation Functions
@@ -1453,6 +1444,33 @@
             });
         }
         
+        function getConnectedNodes(targetNode) {
+            const connectedNodes = [];
+            const targetId = targetNode.userData.id;
+            
+            // Find all links connected to the target node
+            siteData.links.forEach(linkData => {
+                let connectedNodeId = null;
+                
+                // Check if this link connects to our target node
+                if (linkData.source === targetId) {
+                    connectedNodeId = linkData.target;
+                } else if (linkData.target === targetId) {
+                    connectedNodeId = linkData.source;
+                }
+                
+                // Find the actual node object
+                if (connectedNodeId) {
+                    const connectedNode = nodes.find(n => n.userData.id === connectedNodeId);
+                    if (connectedNode && !connectedNodes.includes(connectedNode)) {
+                        connectedNodes.push(connectedNode);
+                    }
+                }
+            });
+            
+            return connectedNodes;
+        }
+        
         function updateNodeInfo(nodeData) {
             const infoDiv = document.getElementById('node-info');
             const titleEl = document.getElementById('node-title');
@@ -1516,38 +1534,74 @@
             nodes.forEach(node => {
                 node.scale.set(1, 1, 1);
                 node.material.emissiveIntensity = 0.2;
+                
+                // Reset to original color based on node type
+                const originalColor = nodeColors[node.userData.type] || 0xffffff;
+                node.material.color.setHex(originalColor);
+                node.material.emissive.setHex(originalColor);
             });
             
             links.forEach(link => {
-                link.material.opacity = 0.3;
-                link.material.color.setHex(0x64f4ff);
+                if (link.userData.isLink) {
+                    // Reset all lines in the group
+                    link.children.forEach(line => {
+                        line.material.opacity = 0.8;
+                        line.material.color.setHex(0x64f4ff);
+                    });
+                }
             });
             
             // Highlight hovered node and its connections
             if (intersects.length > 0) {
                 hoveredNode = intersects[0].object;
+                
+                // Main hovered node - bright highlight
                 hoveredNode.scale.set(1.3, 1.3, 1.3);
                 hoveredNode.material.emissiveIntensity = 0.5;
+                
+                // Find and highlight connected nodes
+                const connectedNodes = getConnectedNodes(hoveredNode);
+                connectedNodes.forEach(node => {
+                    // Connected nodes - subtle glow effect with pulsing scale
+                    const pulseScale = 1.12 + Math.sin(Date.now() * 0.005) * 0.03; // Subtle pulsing
+                    node.scale.set(pulseScale, pulseScale, pulseScale);
+                    node.material.emissiveIntensity = 0.4;
+                    
+                    // Add subtle brightness increase instead of color change
+                    const originalColor = nodeColors[node.userData.type] || 0xffffff;
+                    const brighterColor = new THREE.Color(originalColor).multiplyScalar(1.3);
+                    node.material.color.copy(brighterColor);
+                });
                 
                 // Highlight connected links
                 links.forEach(link => {
                     if (link.userData.source === hoveredNode || link.userData.target === hoveredNode) {
-                        link.material.opacity = 0.8;
-                        link.material.color.setHex(0xffff00);
+                        link.children.forEach(line => {
+                            line.material.opacity = 1.0;
+                            line.material.color.setHex(0xffff00);
+                        });
                     }
                 });
             }
             
             // Update link positions
             links.forEach(link => {
-                const positions = link.geometry.attributes.position.array;
-                positions[0] = link.userData.source.position.x;
-                positions[1] = link.userData.source.position.y;
-                positions[2] = link.userData.source.position.z;
-                positions[3] = link.userData.target.position.x;
-                positions[4] = link.userData.target.position.y;
-                positions[5] = link.userData.target.position.z;
-                link.geometry.attributes.position.needsUpdate = true;
+                if (link.userData.isLink && link.userData.source && link.userData.target) {
+                    const startPos = link.userData.source.position;
+                    const endPos = link.userData.target.position;
+                    
+                    // Update all lines in the group
+                    link.children.forEach(line => {
+                        const positions = line.geometry.attributes.position.array;
+                        positions[0] = startPos.x;
+                        positions[1] = startPos.y;
+                        positions[2] = startPos.z;
+                        positions[3] = endPos.x;
+                        positions[4] = endPos.y;
+                        positions[5] = endPos.z;
+                        line.geometry.attributes.position.needsUpdate = true;
+                    });
+                }
             });
             
             // Gentle rotation for visual interest
